@@ -1,6 +1,7 @@
 {
 	"name": "DestinationDataset_9k8",
 	"properties": {
+		"description": "3",
 		"linkedServiceName": {
 			"referenceName": "AzureBlobStorage1",
 			"type": "LinkedServiceReference"
