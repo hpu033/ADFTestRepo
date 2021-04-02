@@ -1,0 +1,460 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name"
+		},
+		"AzureBlobStorage0408": {
+			"type": "string"
+		},
+		"ADLSGen2LinkedService": {
+			"type": "string"
+		},
+		"AzureSqlDBAutoResolveIR": {
+			"type": "string"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/plTestDataFlowParams0401')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Data flow1",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "Set variable2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfGeneratePartition0310",
+								"type": "DataFlowReference",
+								"parameters": {
+									"dfParam1": {
+										"value": "'@{pipeline().parameters.plParam1}'",
+										"type": "Expression"
+									}
+								}
+							},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "Data flow2",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [
+							{
+								"activity": "Set variable1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "dfFromSqlDb",
+								"type": "DataFlowReference",
+								"parameters": {
+									"dfParam2": "toString($dfParam4)",
+									"dfParam3": {
+										"value": "'@{pipeline().parameters.plParam3}'",
+										"type": "Expression"
+									},
+									"dfParam4": {
+										"value": "@pipeline().parameters.plParam4",
+										"type": "Expression"
+									}
+								}
+							},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "Set variable1",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Data flow1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "var1",
+							"value": {
+								"value": "@activity('Data flow1').output",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set variable2",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "var1",
+							"value": {
+								"value": "@formatDateTime(adddays(convertTimeZone(utcnow(),'UTC', 'Taipei Standard Time'), -7), 'yyyy-MM-dd')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"parameters": {
+					"plParam1": {
+						"type": "string",
+						"defaultValue": "'*.csv'"
+					},
+					"plParam3": {
+						"type": "string",
+						"defaultValue": "'G%'"
+					},
+					"plParam4": {
+						"type": "int",
+						"defaultValue": 55
+					},
+					"plCurrentDate": {
+						"type": "string",
+						"defaultValue": "2021-03-01"
+					}
+				},
+				"variables": {
+					"var1": {
+						"type": "String",
+						"defaultValue": "12"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/dfGeneratePartition0310')]",
+				"[concat(variables('factoryId'), '/dataflows/dfFromSqlDb')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfGeneratePartition0310')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DelimitedText812",
+								"type": "DatasetReference"
+							},
+							"name": "source1"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DelimitedText813",
+								"type": "DatasetReference"
+							},
+							"name": "sink1"
+						}
+					],
+					"transformations": [],
+					"script": "parameters{\n\tdfParam1 as string\n}\nsource(output(\n\t\t{start-time-unixtimestamp-dot-ms} as string,\n\t\t{cs-ip} as string,\n\t\t{cs-method} as string,\n\t\t{sc-status} as string,\n\t\t{sc-content-bytes} as string,\n\t\t{sc-total-bytes} as string,\n\t\t{s-object-size} as string,\n\t\t{cs(User-Agent)} as string,\n\t\t{cs(Host)} as string,\n\t\t{sc(Content-Type)} as string,\n\t\tedgeip as string,\n\t\t{x-time-transfer-ms} as string,\n\t\t{start-time} as string,\n\t\t{account-prefix} as string,\n\t\t{cp-code} as string,\n\t\t{start-time-partition-key} as string,\n\t\t{client-city} as string,\n\t\t{client-country} as string,\n\t\t{edge-city} as string,\n\t\t{edge-country} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\twildcardPaths:[($dfParam1)]) ~> source1\nsource1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\trowUrlColumn:'start-time-unixtimestamp-dot-ms',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> sink1"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DelimitedText812')]",
+				"[concat(variables('factoryId'), '/datasets/DelimitedText813')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dfFromSqlDb')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "AzureSqlTable10",
+								"type": "DatasetReference"
+							},
+							"name": "source1"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DelimitedText813",
+								"type": "DatasetReference"
+							},
+							"name": "sink1"
+						}
+					],
+					"transformations": [
+						{
+							"name": "DerivedColumn1"
+						}
+					],
+					"script": "parameters{\n\tdfParam2 as string,\n\tdfParam3 as string,\n\tdfParam4 as integer (11)\n}\nsource(output(\n\t\tCustomerID as integer,\n\t\tNameStyle as boolean,\n\t\tTitle as string,\n\t\tFirstName as string,\n\t\tMiddleName as string,\n\t\tLastName as string,\n\t\tSuffix as string,\n\t\tCompanyName as string,\n\t\tSalesPerson as string,\n\t\tEmailAddress as string,\n\t\tPhone as string,\n\t\tPasswordHash as string,\n\t\tPasswordSalt as string,\n\t\trowguid as string,\n\t\tModifiedDate as timestamp\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tquery: (concat(\"Select CustomerID,NameStyle,FirstName,LastName,Phone from [SalesLT].[Customer] where LastName like '\",$dfParam3, \"'\") ),\n\tformat: 'query') ~> source1\nsource1 derive(param4Value = $dfParam2) ~> DerivedColumn1\nDerivedColumn1 sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> sink1"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AzureSqlTable10')]",
+				"[concat(variables('factoryId'), '/datasets/DelimitedText813')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DelimitedText812')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureBlobStorage0408')]",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": "testfolder0329",
+						"container": "streaminput3"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "start-time-unixtimestamp-dot-ms",
+						"type": "String"
+					},
+					{
+						"name": "cs-ip",
+						"type": "String"
+					},
+					{
+						"name": "cs-method",
+						"type": "String"
+					},
+					{
+						"name": "sc-status",
+						"type": "String"
+					},
+					{
+						"name": "sc-content-bytes",
+						"type": "String"
+					},
+					{
+						"name": "sc-total-bytes",
+						"type": "String"
+					},
+					{
+						"name": "s-object-size",
+						"type": "String"
+					},
+					{
+						"name": "cs(User-Agent)",
+						"type": "String"
+					},
+					{
+						"name": "cs(Host)",
+						"type": "String"
+					},
+					{
+						"name": "sc(Content-Type)",
+						"type": "String"
+					},
+					{
+						"name": "edgeip",
+						"type": "String"
+					},
+					{
+						"name": "x-time-transfer-ms",
+						"type": "String"
+					},
+					{
+						"name": "start-time",
+						"type": "String"
+					},
+					{
+						"name": "account-prefix",
+						"type": "String"
+					},
+					{
+						"name": "cp-code",
+						"type": "String"
+					},
+					{
+						"name": "start-time-partition-key",
+						"type": "String"
+					},
+					{
+						"name": "client-city",
+						"type": "String"
+					},
+					{
+						"name": "client-country",
+						"type": "String"
+					},
+					{
+						"name": "edge-city",
+						"type": "String"
+					},
+					{
+						"name": "edge-country",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DelimitedText813')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('ADLSGen2LinkedService')]",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": "testoutput0329"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlTable10')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureSqlDBAutoResolveIR')]",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "NameStyle",
+						"type": "bit"
+					},
+					{
+						"name": "Title",
+						"type": "nvarchar"
+					},
+					{
+						"name": "FirstName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "MiddleName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "LastName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Suffix",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CompanyName",
+						"type": "nvarchar"
+					},
+					{
+						"name": "SalesPerson",
+						"type": "nvarchar"
+					},
+					{
+						"name": "EmailAddress",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Phone",
+						"type": "nvarchar"
+					},
+					{
+						"name": "PasswordHash",
+						"type": "varchar"
+					},
+					{
+						"name": "PasswordSalt",
+						"type": "varchar"
+					},
+					{
+						"name": "rowguid",
+						"type": "uniqueidentifier"
+					},
+					{
+						"name": "ModifiedDate",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "SalesLT",
+					"table": "Customer"
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
